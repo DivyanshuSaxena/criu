@@ -740,19 +740,20 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 		goto err;
 
 	// Changed code: Read the mem file for the respective pid
-	// long ptraceResult = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
-	// if (ptraceResult < 0)
-	// {
-	// 	printf("Unable to attach to the pid specified\n");
-	// }
-	// wait(NULL);
-
-	// int memfd = open_proc(pid, "mem");
-	// FILE* mem_file = fdopen(memfd, "r");
-	// unsigned long addr;
-	// int chunk_size = 4096;
 	FILE* wr_file = fopen("/users/dsaxena/pids.txt", "a");
 	fprintf(wr_file, "Dumping pid %d\n", pid);
+	long ptraceResult = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
+	if (ptraceResult < 0)
+	{
+		fprintf(wr_file, "Unable to attach to the pid specified\n");
+	}
+	fprintf(wr_file, "Waiting\n");
+	wait(NULL);
+
+	int memfd = open_proc(pid, "mem");
+	FILE* mem_file = fdopen(memfd, "r");
+	unsigned long addr;
+	int chunk_size = 4096;
 	// End changed code
 
 	while (1) {
@@ -809,13 +810,16 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 		vma_area->e->prot	= PROT_NONE;
 
 		// Changed code: Read the respective chunk from mem
-		// unsigned char chunk[chunk_size];
-		// // Currently ignoring offset and mmap files.
-		// fseeko(mem_file, start, SEEK_SET);
-		// for (addr = start; addr < end; addr += chunk_size)
-		// {
-		// 	int ret = fread(&chunk, 1, chunk_size, mem_file);
-		// }
+		unsigned char chunk[chunk_size];
+		// Currently ignoring offset and mmap files.
+		fseeko(mem_file, start, SEEK_SET);
+		for (addr = start; addr < end; addr += chunk_size)
+		{
+			int ret = fread(&chunk, 1, chunk_size, mem_file);
+			if (ret) {
+				fprintf(wr_file, "ok\n");
+			}
+		}
 		// End changed code
 
 		if (task_size_check(pid, vma_area->e))
