@@ -827,12 +827,8 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 				&vfi, &prev_vfi, &vm_file_fd))
 			goto err;
 
-		if (vma_entry_is(vma_area->e, VMA_FILE_PRIVATE) ||
-				vma_entry_is(vma_area->e, VMA_FILE_SHARED)) {
-			if (dump_filemap && dump_filemap(vma_area, vm_file_fd))
-				goto err;			
-
-			// Changed code: Read the respective chunk from mem
+		// Changed code: Read the respective chunk from mem
+		if (vma_entry_is(vma_area->e, VMA_AREA_REGULAR)) {
 			unsigned char chunk[chunk_size];
 			// Currently ignoring offset and mmap files.
 			fseeko(mem_file, start, SEEK_SET);
@@ -845,7 +841,13 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 				fwrite(chunk, sizeof(char), chunk_size, dump_file);
 				fprintf(owner_file, "%c\n", s);
 			}
-			// End changed code
+		}
+		// End changed code
+
+		if (vma_entry_is(vma_area->e, VMA_FILE_PRIVATE) ||
+				vma_entry_is(vma_area->e, VMA_FILE_SHARED)) {
+			if (dump_filemap && dump_filemap(vma_area, vm_file_fd))
+				goto err;
 		} else if (vma_entry_is(vma_area->e, VMA_AREA_AIORING))
 			vma_area_list->nr_aios++;
 	}
