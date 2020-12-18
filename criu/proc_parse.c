@@ -742,13 +742,8 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 	// Changed code: Read the mem file for the respective pid
 	FILE* wr_file = fopen("/users/dsaxena/pids.txt", "a");
 	fprintf(wr_file, "Dumping pid %d\n", pid);
-	long ptraceResult = ptrace(PTRACE_ATTACH, pid, NULL, NULL);
-	if (ptraceResult < 0)
-	{
-		fprintf(wr_file, "Unable to attach to the pid specified\n");
-	}
-	fprintf(wr_file, "Waiting\n");
-	wait(NULL);
+	FILE* dump_file = fopen("/users/dsaxena/dump", "a");
+	FILE* owner_file = fopen("/users/dsaxena/owners", "a");
 
 	int memfd = open_proc(pid, "mem");
 	FILE* mem_file = fdopen(memfd, "r");
@@ -816,9 +811,11 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 		for (addr = start; addr < end; addr += chunk_size)
 		{
 			int ret = fread(&chunk, 1, chunk_size, mem_file);
-			if (ret) {
-				fprintf(wr_file, "ok\n");
+			if (ret < 0) {
+				fprintf(wr_file, "Read less than zero bytes\n");
 			}
+			fprintf(dump_file, "%s", chunk);
+			fprintf(owner_file, "%s, %c", chunk, s);
 		}
 		// End changed code
 
@@ -858,6 +855,8 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 
 	// Changed code
 	fclose(wr_file);
+	fclose(dump_file);
+	fclose(owner_file);
 	// End changed code
 
 err:
