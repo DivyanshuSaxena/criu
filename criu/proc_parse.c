@@ -804,21 +804,6 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 		vma_area->e->pgoff	= pgoff;
 		vma_area->e->prot	= PROT_NONE;
 
-		// Changed code: Read the respective chunk from mem
-		unsigned char chunk[chunk_size];
-		// Currently ignoring offset and mmap files.
-		fseeko(mem_file, start, SEEK_SET);
-		for (addr = start; addr < end; addr += chunk_size)
-		{
-			int ret = fread(&chunk, 1, chunk_size, mem_file);
-			if (ret < 0) {
-				fprintf(wr_file, "Read less than zero bytes\n");
-			}
-			fwrite(chunk, sizeof(char), chunk_size, dump_file);
-			fprintf(owner_file, "%c\n", chunk, s);
-		}
-		// End changed code
-
 		if (task_size_check(pid, vma_area->e))
 			goto err;
 
@@ -845,7 +830,22 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 		if (vma_entry_is(vma_area->e, VMA_FILE_PRIVATE) ||
 				vma_entry_is(vma_area->e, VMA_FILE_SHARED)) {
 			if (dump_filemap && dump_filemap(vma_area, vm_file_fd))
-				goto err;
+				goto err;			
+
+			// Changed code: Read the respective chunk from mem
+			unsigned char chunk[chunk_size];
+			// Currently ignoring offset and mmap files.
+			fseeko(mem_file, start, SEEK_SET);
+			for (addr = start; addr < end; addr += chunk_size)
+			{
+				int ret = fread(&chunk, 1, chunk_size, mem_file);
+				if (ret < 0) {
+					fprintf(wr_file, "Read less than zero bytes\n");
+				}
+				fwrite(chunk, sizeof(char), chunk_size, dump_file);
+				fprintf(owner_file, "%c\n", s);
+			}
+			// End changed code
 		} else if (vma_entry_is(vma_area->e, VMA_AREA_AIORING))
 			vma_area_list->nr_aios++;
 	}
