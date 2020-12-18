@@ -814,8 +814,8 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 			if (ret < 0) {
 				fprintf(wr_file, "Read less than zero bytes\n");
 			}
-			fprintf(dump_file, "%s", chunk);
-			fprintf(owner_file, "%s, %c", chunk, s);
+			fwrite(chunk, sizeof(char), chunk_size, dump_file);
+			fprintf(owner_file, "%c\n", chunk, s);
 		}
 		// End changed code
 
