@@ -5,6 +5,7 @@
 # 3: Dump File for container 2
 # 4: Flags for container 2
 # 5: Chunk Size
+# 6: Directory to write the results into
 
 import os
 import sys
@@ -12,6 +13,7 @@ import json
 import hashlib
 
 CHUNK_SIZE = int(sys.argv[5])
+RESULTS_DIR = sys.argv[6]
 FLAG_CODE = {
     "VMA_AREA_REGULAR": 0,
     "VMA_AREA_STACK": 1,
@@ -31,6 +33,11 @@ FLAG_CODE = {
     "VMA_PREMMAPED": 30,
     "VMA_UNSUPP": 31
 }
+
+if len(sys.argv) != 7:
+    print(
+        'Usage: python3 analysis.py <dump1> <owners1> <dump2> <owners2> <chunk-size> <results-dir>'
+    )
 
 
 def make_hash_table(dump, flags):
@@ -85,12 +92,13 @@ def get_analysis(table1, table2):
         tuple: of dictionaries holding the counts of various flags in common hashes
     """
     print('[INFO]: Starting the analysis and dump method')
-    common_hashes = table1.keys() & table2.keys()
     counts1 = {'total': 0}
     d_counts1 = {'total': 0}
     counts2 = {'total': 0}
     d_counts2 = {'total': 0}
 
+    common_hashes = table1.keys() & table2.keys()
+    print('[INFO]: Number of common hashes: ' + str(len(common_hashes)))
     for key in common_hashes:
         dict1 = table1[key]
         dict2 = table2[key]
@@ -107,6 +115,8 @@ def get_analysis(table1, table2):
                 counts2[flag] = dict2[flag]
 
     distinct_hashes1 = set(table1.keys()) - set(table2.keys())
+    print('[INFO]: Number of distinct hashes in container 1: ' +
+          str(len(distinct_hashes1)))
     for key in distinct_hashes1:
         dict1 = table1[key]
         for flag in dict1:
@@ -116,6 +126,8 @@ def get_analysis(table1, table2):
                 d_counts1[flag] = dict1[flag]
 
     distinct_hashes2 = set(table2.keys()) - set(table1.keys())
+    print('[INFO]: Number of distinct hashes in container 2: ' +
+          str(len(distinct_hashes2)))
     for key in distinct_hashes2:
         dict2 = table2[key]
         for flag in dict2:
@@ -138,17 +150,19 @@ def write_to_file(file, counts1, counts2):
         counts2 (dict)
     """
     fo = open(file, 'w')
-    fo.write('Type, Count1, Count2')
-    fo.write('Total, ' + str(counts1['total']) + ', ' + str(counts2['total']))
+    fo.write('Type, Count1, Count2\n')
+    fo.write('Total, ' + str(counts1['total']) + ', ' + str(counts2['total']) +
+             '\n')
     for flag, code in FLAG_CODE.items():
         count1 = 0 if code not in counts1 else counts1[code]
         count2 = 0 if code not in counts2 else counts2[code]
-        fo.write(flag + ', ' + str(count1) + ', ' + str(count2))
+        fo.write(flag + ', ' + str(count1) + ', ' + str(count2) + '\n')
     fo.close()
 
 
 dump1 = open(sys.argv[1], "rb")
 dump2 = open(sys.argv[3], "rb")
+
 with open(sys.argv[2]) as f:
     content = f.readlines()
 flags1 = [int(l) for l in content]
@@ -173,8 +187,11 @@ try:
     table1 = make_hash_table(dump1, flags1)
     table2 = make_hash_table(dump2, flags2)
     counts1, d_counts1, counts2, d_counts2 = get_analysis(table1, table2)
-    write_to_file('common_analysis.txt', counts1, counts2)
-    write_to_file('distinct_analysis.txt', counts1, counts2)
+    write_to_file(RESULTS_DIR + '/common_analysis_' + str(CHUNK_SIZE) + '.txt',
+                  counts1, counts2)
+    write_to_file(
+        RESULTS_DIR + '/distinct_analysis_' + str(CHUNK_SIZE) + '.txt',
+        d_counts1, d_counts2)
 finally:
     dump1.close()
     dump2.close()
