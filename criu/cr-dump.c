@@ -1338,13 +1338,13 @@ static int dump_one_task(struct pstree_item *item, InventoryEntry *parent_ie)
 		goto err_cure;
 	}
 
-	if (dfds) {
-		ret = dump_task_files_seized(parasite_ctl, item, dfds);
-		if (ret) {
-			pr_err("Dump files (pid: %d) failed with %d\n", pid, ret);
-			goto err_cure;
-		}
-	}
+	// if (dfds) {
+	// 	ret = dump_task_files_seized(parasite_ctl, item, dfds);
+	// 	if (ret) {
+	// 		pr_err("Dump files (pid: %d) failed with %d\n", pid, ret);
+	// 		goto err_cure;
+	// 	}
+	// }
 
 	mdc.pre_dump = false;
 	mdc.lazy = opts.lazy_pages;
