@@ -11,27 +11,25 @@ import sys
 import json
 import hashlib
 
-
 CHUNK_SIZE = int(sys.argv[5])
 FLAG_CODE = {
-    "VMA_AREA_NONE":    (0 <<  0),
-    "VMA_AREA_REGULAR":	(1 <<  0),
-    "VMA_AREA_STACK":	(1 <<  1),
-    "VMA_AREA_VSYSCALL":(1 <<  2),
-    "VMA_AREA_VDSO":	(1 <<  3),
-    "VMA_AREA_HEAP":	(1 <<  5),
-    "VMA_FILE_PRIVATE":	(1 <<  6),
-    "VMA_FILE_SHARED":	(1 <<  7),
-    "VMA_ANON_SHARED":	(1 <<  8),
-    "VMA_ANON_PRIVATE":	(1 <<  9),
-    "VMA_AREA_SYSVIPC":	(1 <<  10),
-    "VMA_AREA_SOCKET":	(1 <<  11),
-    "VMA_AREA_VVAR":	(1 <<  12),
-    "VMA_AREA_AIORING":	(1 <<  13),
-    "VMA_CLOSE":		(1 <<  28),
-    "VMA_NO_PROT_WRITE":(1 <<  29),
-    "VMA_PREMMAPED":	(1 <<  30),
-    "VMA_UNSUPP":		(1 <<  31)
+    "VMA_AREA_REGULAR": 0,
+    "VMA_AREA_STACK": 1,
+    "VMA_AREA_VSYSCALL": 2,
+    "VMA_AREA_VDSO": 3,
+    "VMA_AREA_HEAP": 5,
+    "VMA_FILE_PRIVATE": 6,
+    "VMA_FILE_SHARED": 7,
+    "VMA_ANON_SHARED": 8,
+    "VMA_ANON_PRIVATE": 9,
+    "VMA_AREA_SYSVIPC": 10,
+    "VMA_AREA_SOCKET": 11,
+    "VMA_AREA_VVAR": 12,
+    "VMA_AREA_AIORING": 13,
+    "VMA_CLOSE": 28,
+    "VMA_NO_PROT_WRITE": 29,
+    "VMA_PREMMAPED": 30,
+    "VMA_UNSUPP": 31
 }
 
 
@@ -51,26 +49,26 @@ def make_hash_table(dump, flags):
     completion = 0
     chunk = dump.read(CHUNK_SIZE)
     while chunk != b"":
-        md5_hash = hashlib.md5(chunk)
+        md5_hash = hashlib.md5(chunk).hexdigest()
         if md5_hash not in table:
             table[md5_hash] = {}
             table[md5_hash]['total'] = 1
         else:
             table[md5_hash]['total'] += 1
-        
+
         flag = flags[counter]
         bin_flag = bin(flag)[2:]
         num_digits = len(bin_flag)
         for bit in range(num_digits):
-            if bin_flag[num_digits-1-bit] == '1':
+            if bin_flag[num_digits - 1 - bit] == '1':
                 if bit not in table[md5_hash]:
                     table[md5_hash][bit] = 1
                 else:
                     table[md5_hash][bit] += 1
 
         counter += 1
-        percent = counter/len(flags) * 100
-        if percent//10 == completion and percent%10 < 0.01:
+        percent = counter / len(flags) * 100
+        if percent // 10 == completion and percent % 10 < 0.01:
             print('[INFO]: Completion: {}', completion)
             completion += 1
         chunk = dump.read(CHUNK_SIZE)
@@ -82,11 +80,16 @@ def get_analysis(table1, table2):
 
     Args:
         table1, table2
+
+    Returns:
+        tuple: of dictionaries holding the counts of various flags in common hashes
     """
     print('[INFO]: Starting the analysis and dump method')
     common_hashes = table1.keys() & table2.keys()
-    counts1 = {'total':0}
-    counts2 = {'total':0}
+    counts1 = {'total': 0}
+    d_counts1 = {'total': 0}
+    counts2 = {'total': 0}
+    d_counts2 = {'total': 0}
 
     for key in common_hashes:
         dict1 = table1[key]
@@ -103,12 +106,45 @@ def get_analysis(table1, table2):
             else:
                 counts2[flag] = dict2[flag]
 
+    distinct_hashes1 = set(table1.keys()) - set(table2.keys())
+    for key in distinct_hashes1:
+        dict1 = table1[key]
+        for flag in dict1:
+            if flag in d_counts1:
+                d_counts1[flag] += dict1[flag]
+            else:
+                d_counts1[flag] = dict1[flag]
+
+    distinct_hashes2 = set(table2.keys()) - set(table1.keys())
+    for key in distinct_hashes2:
+        dict2 = table2[key]
+        for flag in dict2:
+            if flag in d_counts2:
+                d_counts2[flag] += dict2[flag]
+            else:
+                d_counts2[flag] = dict2[flag]
+
     print(counts1)
     print(counts2)
-    json1 = open('common_chunks1.json', 'w')
-    json2 = open('common_chunks2.json', 'w')
-    json.dump(counts1, json1)
-    json.dump(counts2, json2)
+    return counts1, d_counts1, counts2, d_counts2
+
+
+def write_to_file(file, counts1, counts2):
+    """Write the counts objects for the two containers in the given file
+
+    Args:
+        file (string): name of the file to write into
+        counts1 (dict)
+        counts2 (dict)
+    """
+    fo = open(file, 'w')
+    fo.write('Type, Count1, Count2')
+    fo.write('Total, ' + str(counts1['total']) + ', ' + str(counts2['total']))
+    for flag, code in FLAG_CODE.items():
+        count1 = 0 if code not in counts1 else counts1[code]
+        count2 = 0 if code not in counts2 else counts2[code]
+        fo.write(flag + ', ' + str(count1) + ', ' + str(count2))
+    fo.close()
 
 
 dump1 = open(sys.argv[1], "rb")
@@ -124,10 +160,11 @@ flags2 = [int(l) for l in content]
 size1 = os.stat(sys.argv[1]).st_size
 size2 = os.stat(sys.argv[3]).st_size
 
-assert size1/CHUNK_SIZE == len(flags1)
-assert size2/CHUNK_SIZE == len(flags2)
+assert size1 / CHUNK_SIZE == len(flags1)
+assert size2 / CHUNK_SIZE == len(flags2)
 
-print('[INFO]: Assertions fulfilled. Total chunks: {}, {}', len(flags1), len(flags2))
+print('[INFO]: Assertions fulfilled. Total chunks: {}, {}', len(flags1),
+      len(flags2))
 
 dict1 = {}
 dict2 = {}
@@ -135,8 +172,9 @@ dict2 = {}
 try:
     table1 = make_hash_table(dump1, flags1)
     table2 = make_hash_table(dump2, flags2)
-    get_analysis(table1, table2)
-
+    counts1, d_counts1, counts2, d_counts2 = get_analysis(table1, table2)
+    write_to_file('common_analysis.txt', counts1, counts2)
+    write_to_file('distinct_analysis.txt', counts1, counts2)
 finally:
     dump1.close()
     dump2.close()
