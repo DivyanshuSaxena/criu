@@ -12,7 +12,7 @@ import json
 import hashlib
 
 
-CHUNK_SIZE = sys.argv[5]
+CHUNK_SIZE = int(sys.argv[5])
 FLAG_CODE = {
     "VMA_AREA_NONE":    (0 <<  0),
     "VMA_AREA_REGULAR":	(1 <<  0),
@@ -48,8 +48,9 @@ def make_hash_table(dump, flags):
     """
     table = {}
     counter = 0
+    completion = 0
     chunk = dump.read(CHUNK_SIZE)
-    while chunk != "":
+    while chunk != b"":
         md5_hash = hashlib.md5(chunk)
         if md5_hash not in table:
             table[md5_hash] = {}
@@ -67,6 +68,11 @@ def make_hash_table(dump, flags):
                 else:
                     table[md5_hash][bit] += 1
 
+        counter += 1
+        percent = counter/len(flags) * 100
+        if percent//10 == completion and percent%10 < 0.01:
+            print('[INFO]: Completion: {}', completion)
+            completion += 1
         chunk = dump.read(CHUNK_SIZE)
     return table
 
@@ -77,6 +83,7 @@ def get_analysis(table1, table2):
     Args:
         table1, table2
     """
+    print('[INFO]: Starting the analysis and dump method')
     common_hashes = table1.keys() & table2.keys()
     counts1 = {'total':0}
     counts2 = {'total':0}
@@ -98,25 +105,29 @@ def get_analysis(table1, table2):
 
     print(counts1)
     print(counts2)
-    json.dump(counts1, 'common_chunks1.json')
-    json.dump(counts2, 'common_chunks2.json')
+    json1 = open('common_chunks1.json', 'w')
+    json2 = open('common_chunks2.json', 'w')
+    json.dump(counts1, json1)
+    json.dump(counts2, json2)
 
 
 dump1 = open(sys.argv[1], "rb")
 dump2 = open(sys.argv[3], "rb")
 with open(sys.argv[2]) as f:
     content = f.readlines()
-flags1 = content
+flags1 = [int(l) for l in content]
 
 with open(sys.argv[4]) as f:
     content = f.readlines()
-flags2 = content
+flags2 = [int(l) for l in content]
 
 size1 = os.stat(sys.argv[1]).st_size
 size2 = os.stat(sys.argv[3]).st_size
 
 assert size1/CHUNK_SIZE == len(flags1)
 assert size2/CHUNK_SIZE == len(flags2)
+
+print('[INFO]: Assertions fulfilled. Total chunks: {}, {}', len(flags1), len(flags2))
 
 dict1 = {}
 dict2 = {}
