@@ -742,8 +742,8 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 	// Changed code: Read the mem file for the respective pid
 	FILE* wr_file = fopen("/users/dsaxena/pids.txt", "a");
 	fprintf(wr_file, "Dumping pid %d\n", pid);
-	FILE* dump_file = fopen("/users/dsaxena/dump", "a");
-	FILE* owner_file = fopen("/users/dsaxena/owners", "a");
+	FILE* dump_file = fopen("/mydata/local/dump", "a");
+	FILE* owner_file = fopen("/mydata/local/owners", "a");
 
 	int memfd = open_proc(pid, "mem");
 	FILE* mem_file = fdopen(memfd, "r");
