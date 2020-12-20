@@ -479,6 +479,18 @@ static int dump_task_mm(pid_t pid, const struct proc_pid_stat *stat,
 	if (!mme.vmas)
 		return -1;
 
+	// Changed code: Read the mem file for the respective pid
+	FILE* wr_file = fopen("/users/dsaxena/pids.txt", "a");
+	fprintf(wr_file, "Dumping pid %d\n", pid);
+	FILE* dump_file = fopen("/mydata/local/dump", "a");
+	FILE* owner_file = fopen("/mydata/local/owners", "a");
+
+	int memfd = open_proc(pid, "mem");
+	FILE* mem_file = fdopen(memfd, "r");
+	unsigned long addr;
+	int chunk_size = 4096;
+	// End changed code
+
 	list_for_each_entry(vma_area, &vma_area_list->h, list) {
 		VmaEntry *vma = vma_area->e;
 
@@ -497,12 +509,36 @@ static int dump_task_mm(pid_t pid, const struct proc_pid_stat *stat,
 
 		mme.vmas[i++] = vma;
 
+		// Changed code: Read the respective chunk from mem
+		unsigned char chunk[chunk_size];
+		unsigned long start, end;
+		start = vma_area->e->start;
+		end = vma_area->e->end;
+		// Currently ignoring offset and mmap files.
+		fseeko(mem_file, start, SEEK_SET);
+		for (addr = start; addr < end; addr += chunk_size)
+		{
+			int ret = fread(&chunk, 1, chunk_size, mem_file);
+			if (ret < 0) {
+				fprintf(wr_file, "Read less than zero bytes\n");
+			}
+			fwrite(chunk, sizeof(char), chunk_size, dump_file);
+			fprintf(owner_file, "%u\n", vma_area->e->status);
+		}
+		// End changed code
+
 		if (vma_entry_is(vma, VMA_AREA_AIORING)) {
 			ret = dump_aio_ring(&mme, vma_area);
 			if (ret)
 				goto err;
 		}
 	}
+
+	// Changed code
+	fclose(wr_file);
+	fclose(dump_file);
+	fclose(owner_file);
+	// End changed code
 
 	mme.mm_start_code = stat->start_code;
 	mme.mm_end_code = stat->end_code;

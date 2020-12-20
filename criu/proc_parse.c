@@ -740,15 +740,15 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 		goto err;
 
 	// Changed code: Read the mem file for the respective pid
-	FILE* wr_file = fopen("/users/dsaxena/pids.txt", "a");
-	fprintf(wr_file, "Dumping pid %d\n", pid);
-	FILE* dump_file = fopen("/mydata/local/dump", "a");
-	FILE* owner_file = fopen("/mydata/local/owners", "a");
+	// FILE* wr_file = fopen("/users/dsaxena/pids.txt", "a");
+	// fprintf(wr_file, "Dumping pid %d\n", pid);
+	// FILE* dump_file = fopen("/mydata/local/dump", "a");
+	// FILE* owner_file = fopen("/mydata/local/owners", "a");
 
-	int memfd = open_proc(pid, "mem");
-	FILE* mem_file = fdopen(memfd, "r");
-	unsigned long addr;
-	int chunk_size = 4096;
+	// int memfd = open_proc(pid, "mem");
+	// FILE* mem_file = fdopen(memfd, "r");
+	// unsigned long addr;
+	// int chunk_size = 4096;
 	// End changed code
 
 	while (1) {
@@ -828,22 +828,22 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 			goto err;
 
 		// Changed code: Read the respective chunk from mem
-		if (vma_entry_is(vma_area->e, VMA_ANON_PRIVATE) ||
-			vma_entry_is(vma_area->e, VMA_ANON_SHARED) ||
-			vma_entry_is(vma_area->e, VMA_FILE_PRIVATE)) {
-			unsigned char chunk[chunk_size];
-			// Currently ignoring offset and mmap files.
-			fseeko(mem_file, start, SEEK_SET);
-			for (addr = start; addr < end; addr += chunk_size)
-			{
-				int ret = fread(&chunk, 1, chunk_size, mem_file);
-				if (ret < 0) {
-					fprintf(wr_file, "Read less than zero bytes\n");
-				}
-				fwrite(chunk, sizeof(char), chunk_size, dump_file);
-				fprintf(owner_file, "%u\n", vma_area->e->status);
-			}
-		}
+		// if (vma_entry_is(vma_area->e, VMA_ANON_PRIVATE) ||
+		// 	vma_entry_is(vma_area->e, VMA_ANON_SHARED) ||
+		// 	vma_entry_is(vma_area->e, VMA_FILE_PRIVATE)) {
+		// 	unsigned char chunk[chunk_size];
+		// 	// Currently ignoring offset and mmap files.
+		// 	fseeko(mem_file, start, SEEK_SET);
+		// 	for (addr = start; addr < end; addr += chunk_size)
+		// 	{
+		// 		int ret = fread(&chunk, 1, chunk_size, mem_file);
+		// 		if (ret < 0) {
+		// 			fprintf(wr_file, "Read less than zero bytes\n");
+		// 		}
+		// 		fwrite(chunk, sizeof(char), chunk_size, dump_file);
+		// 		fprintf(owner_file, "%u\n", vma_area->e->status);
+		// 	}
+		// }
 		// End changed code
 
 		if (vma_entry_is(vma_area->e, VMA_FILE_PRIVATE) ||
@@ -858,9 +858,9 @@ int parse_smaps(pid_t pid, struct vm_area_list *vma_area_list,
 	ret = 0;
 
 	// Changed code
-	fclose(wr_file);
-	fclose(dump_file);
-	fclose(owner_file);
+	// fclose(wr_file);
+	// fclose(dump_file);
+	// fclose(owner_file);
 	// End changed code
 
 err:
