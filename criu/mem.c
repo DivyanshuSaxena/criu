@@ -159,6 +159,12 @@ static int generate_iovs(struct vma_area *vma, struct page_pipe *pp, u64 *map, u
 
 	nr_to_scan = (vma_area_len(vma) - *off) / PAGE_SIZE;
 
+	// Changed code: Read the mem file for the respective pid
+	FILE* dump_file = fopen("/mydata/local/dump", "a");
+	FILE* owner_file = fopen("/mydata/local/owners", "a");
+	unsigned long addr;
+	// End changed code
+
 	for (pfn = 0; pfn < nr_to_scan; pfn++) {
 		unsigned long vaddr;
 		unsigned int ppb_flags = 0;
@@ -179,6 +185,12 @@ static int generate_iovs(struct vma_area *vma, struct page_pipe *pp, u64 *map, u
 		 * page. The latter would be checked in page-xfer.
 		 */
 
+
+		// Changed code: Dump the respective chunk into file
+		fwrite(vaddr, sizeof(char), PAGE_SIZE, dump_file);
+		fprintf(owner_file, "%u\n", vma->e->status);
+		// End changed code
+
 		if (has_parent && page_in_parent(at[pfn] & PME_SOFT_DIRTY)) {
 			ret = page_pipe_add_hole(pp, vaddr, PP_HOLE_PARENT);
 			pages[0]++;
@@ -197,6 +209,11 @@ static int generate_iovs(struct vma_area *vma, struct page_pipe *pp, u64 *map, u
 	}
 
 	*off += pfn * PAGE_SIZE;
+
+	// Changed code
+	fclose(dump_file);
+	fclose(owner_file);
+	// End changed code
 
 	cnt_add(CNT_PAGES_SCANNED, nr_to_scan);
 	cnt_add(CNT_PAGES_SKIPPED_PARENT, pages[0]);
