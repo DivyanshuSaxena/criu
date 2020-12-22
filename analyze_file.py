@@ -36,7 +36,7 @@ FLAG_CODE = {
 
 if len(sys.argv) != 7:
     print(
-        'Usage: python3 analysis.py <dump1> <owners1> <dump2> <owners2> <chunk-size> <results-dir>'
+        'Usage: python3 analyze_file.py <dump1> <owners1> <dump2> <owners2> <chunk-size> <results-dir>'
     )
 
 
@@ -179,9 +179,6 @@ assert size2 / CHUNK_SIZE == len(flags2)
 
 print('[INFO]: Assertions fulfilled. Total chunks: {}, {}', len(flags1),
       len(flags2))
-
-dict1 = {}
-dict2 = {}
 
 try:
     table1 = make_hash_table(dump1, flags1)
