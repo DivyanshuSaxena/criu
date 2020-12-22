@@ -4,6 +4,7 @@
 # 2: Directory with dump files for container 2
 # 3: Chunk Size
 # 4: Directory to write the results into
+# 5: Experiment Type ('epn'|'epn'|'lr')
 
 import os
 import sys
@@ -11,11 +12,13 @@ import json
 import hashlib
 
 CHUNK_SIZE = int(sys.argv[3])
+PAGE_SIZE = 4096
 RESULTS_DIR = sys.argv[4]
+EXP_TYPE = sys.argv[5]
 
-if len(sys.argv) != 5:
+if len(sys.argv) != 6:
     print(
-        'Usage: python3 analyze_dir.py <dump1-dir> <dump2-dir> <chunk-size> <results-dir>'
+        'Usage: python3 analyze_dir.py <dump1-dir> <dump2-dir> <chunk-size> <results-dir> <exp-type>'
     )
 
 
@@ -33,16 +36,19 @@ def make_hash_table(dump_dir):
     pages = [p for p in filenames if 'pages-' in p]
 
     for page_file in pages:
-        dump = open(os.join(dump_dir, page_file), 'rb')
-        chunk = dump.read(CHUNK_SIZE)
-        while chunk != b"":
-            md5_hash = hashlib.md5(chunk).hexdigest()
-            if md5_hash not in table:
-                table[md5_hash] = 1
-            else:
-                table[md5_hash] += 1
+        dump = open(os.path.join(dump_dir, page_file), 'rb')
+        page = dump.read(PAGE_SIZE)
+        while page != b"":
+            for i in range(PAGE_SIZE // CHUNK_SIZE):
+                chunk = page[i * CHUNK_SIZE:min((i + 1) * CHUNK_SIZE -
+                                                1, PAGE_SIZE - 1)]
+                md5_hash = hashlib.md5(chunk).hexdigest()
+                if md5_hash not in table:
+                    table[md5_hash] = 1
+                else:
+                    table[md5_hash] += 1
 
-            chunk = dump.read(CHUNK_SIZE)
+            page = dump.read(PAGE_SIZE)
         print('[INFO]: Read file ' + page_file)
 
     return table
@@ -145,5 +151,6 @@ def write_to_file(file, counts1, counts2):
 table1 = make_hash_table(sys.argv[1])
 table2 = make_hash_table(sys.argv[2])
 counts1, counts2 = get_analysis(table1, table2)
-write_to_file(RESULTS_DIR + '/analysis_' + str(CHUNK_SIZE) + '.txt', counts1,
-              counts2)
+write_to_file(
+    RESULTS_DIR + '/analysis_' + EXP_TYPE + '_' + str(CHUNK_SIZE) + '.txt',
+    counts1, counts2)
