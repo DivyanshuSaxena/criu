@@ -60,8 +60,8 @@ def make_hash_table(dump_dir):
                     hash_table[md5_hash].append(index)
                 else:
                     hash_table[md5_hash] = [index]
-                index += 1
 
+            index += 1
             page = dump.read(PAGE_SIZE)
         print('[INFO]: Read file ' + page_file)
 
@@ -83,14 +83,22 @@ def compute_patches(dump_dir, raw_pages):
         page = dump.read(PAGE_SIZE)
         while page != b"":
             raw_length += PAGE_SIZE
-            possible_locations = []
+            possible_locations = {}
             for loc in locations:
                 chunk = page[loc:loc + CHUNK_SIZE]
                 md5_hash = hashlib.md5(chunk).hexdigest()
                 if md5_hash in hash_table:
-                    possible_locations.extend(hash_table[md5_hash])
+                    if md5_hash in possible_locations:
+                        possible_locations[md5_hash].add(loc)
+                    else:
+                        possible_locations[md5_hash] = {loc}
 
-            check_set = set(possible_locations)
+            check_set = []
+            for index in possible_locations.keys():
+                if len(possible_locations[index]) > 1:
+                    check_set.append(index)
+
+            print('Length of probable candidates: {}'.format(len(check_set)))
             best_patch = ''
             for index in check_set:
                 delta = xdelta3.encode(raw_pages[index], page)
